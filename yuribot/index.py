@@ -8,7 +8,7 @@ import json
 from flask import Flask, request
 
 token = os.environ.get('FB_ACCESS_TOKEN')
-api_token = os.environ.get('WEATHER_API_KEY')
+api_key = os.environ.get('WEATHER_API_KEY')
 app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
@@ -16,15 +16,19 @@ def webhook():
 	if request.method == 'POST':
 		try:
 			data = json.loads(request.data.decode())
-			print data
-			message = data['entry'][0]['messaging'][0]['message']
-			#text = data['entry'][0]['messaging'][0]['message']['text']
-			sender = data['entry'][0]['messaging'][0]['sender']['id']
+			print(data)
 
+			message = data['entry'][0]['messaging'][0]['message']
+			print("\n" + str(message) + "\n")
+			
+			sender = data['entry'][0]['messaging'][0]['sender']['id'] # Sender inject_url_defaults()
+			#attachments = message['message']['attachments']
+			#print("\n" + str(attachments) + "\n")
+			
 			if 'attachments' in message:
 				if 'payload' in message['attachments'][0]:
-					if 'coordinate' in message['attachments'][0]['payload']:
-						location = message['attachments'][0]['payload']['coordinate']
+					if 'coordinates' in message['attachments'][0]['payload']:
+						location = message['attachments'][0]['payload']['coordinates']
 						latitude = location['lat']
 						longitude = location['long']
 						url = 'http://api.openweathermap.org/data/2.5/weather?' \
@@ -43,11 +47,11 @@ def webhook():
 								   	weather['temp_max'], weather['temp_min'])
 
 						payload = {'recipient': {'id': sender}, 'message': {'text': text_res}}
-
-						r = requests.post('https://graph.facebook.com/v2.6/me/messages/?access_token=' + token, json=payload)
+						print(payload)
+						r = requests.post('https://graph.facebook.com/v2.6/me/messages/?access_token=' + str(token), json=payload)
 
  			else:
-				text = message['text']
+				#text = message['text']
 				payload = location_quick_reply(sender)
 				r = requests.post('https://graph.facebook.com/v2.6/me/messages/?access_token' + str(token), json=payload)
 		
@@ -56,7 +60,8 @@ def webhook():
 	
 	elif request.method == 'GET':
 		print request.args.get('hub.verify_token')
-		print os.environ.get('FB_VERIFY_TOKEN') 
+		print os.environ.get('FB_VERIFY_TOKEN')
+
 		if request.args.get('hub.verify_token') == os.environ.get('FB_VERIFY_TOKEN') :
 				return request.args.get('hub.challenge')		
 		return "Wrong Verify Token"

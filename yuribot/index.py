@@ -32,18 +32,18 @@ def webhook():
 						latitude = location['lat']
 						longitude = location['long']
 						url = 'http://api.openweathermap.org/data/2.5/weather?' \
-						'lat={}&lon={}&appid={}&units={}&lang={}'.format(latitude, longitude, api_key, 'metric', 'pt')
+						'lat={}&lon={}&appid={}&units={}&lang={}'.format(latitude, longitude, api_key, 'metric', 'en')
 						r = requests.get(url) 
 						description = r.json()['weather'][0]['description'].title()
 						icon = r.json()['weather'][0]['icon']
 						weather = r.json()['main']
 
 						text_res = '{}\n' \
-								   'Temperatura: {}\n' \
-								   'Pressão: {}\n' \
-								   'Umidade: {}\n' \
-								   'Máxima: {}\n' \
-								   'Mínima: {}'.format(description, weather['temp'], weather['pressure'], weather['humidity'], 
+								   'Temperature: {}\n' \
+								   'Pressure: {}\n' \
+								   'Humidity: {}\n' \
+								   'Max: {}\n' \
+								   'Min: {}'.format(description, weather['temp'], weather['pressure'], weather['humidity'], 
 								   	weather['temp_max'], weather['temp_min'])
 
 						payload = {'recipient': {'id': sender}, 'message': {'text': text_res}}

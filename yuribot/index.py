@@ -178,7 +178,7 @@ def webhook():
 		print request.args.get('hub.verify_token')
 		print os.environ.get('FB_VERIFY_TOKEN')
 
-		if request.args.get('hub.verify_token') == os.environ.get('FB_VERIFY_TOKEN') :
+		if request.args.get('hub.verify_token') == os.environ.get('FB_VERIFY_TOKEN'):
 				return request.args.get('hub.challenge')		
 		return "Wrong Verify Token"
 	

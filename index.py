@@ -1,189 +1,195 @@
-#coding:utf-8
+'''
+This is a Messenger bot that shows some information about the current weather
+in the user shared location.
+'''
+
+# pylint: disable=E0401
+# pylint: disable=C0103
+# pylint: disable=E0602
+# coding:utf-8
 
 import os
-import requests
 import traceback
 import json
+import requests
 
 from flask import Flask, request
 
-token = os.environ.get('FB_ACCESS_TOKEN')
-api_key = os.environ.get('WEATHER_API_KEY')
+TOKEN = os.environ.get('FB_ACCESS_TOKEN')
+API_KEY = os.environ.get('WEATHER_API_KEY')
 app = Flask(__name__)
 
 
 def location_quick_reply(sender):
-	return {'recipient': {'id': sender}, 'message': {'text': "Can you share your location? I'll give you some details about the weather. :D"}}
+    '''
+    Returns a json with the user's id and a message
+	Keyword argument:
+	sender -- user's id
+	'''
+    return {
+        'recipient': {
+            'id': sender
+        },
+        'message': {
+            'text': "Can you share your location? I'll give you \
+                     some details about the weather. :D"
+        }
+    }
 
 
 def send_message(payload):
-	requests.post('https://graph.facebook.com/v2.6/me/messages/?access_token=' + token, json=payload)
+    '''
+	Will send to the chat what you pass as argument
+	Keyword argument
+	payload -- a message or a json with data
+	'''
+    requests.post('https://graph.facebook.com/v2.6/me/messages/? \
+	               access_token=' + TOKEN, json=payload)
 
 
-def send_attachment(sender, type, payload):
-	return {
-		"recipient": {
-			"id": sender
-		},
-		"message": {
-			"attachment": {
-				"type": type,
-				"payload": payload
-			}
-		} 
-	}
+def send_attachment(sender, attach_type, payload):
+    '''
+    Sends to the chat a couple of data passed as an attachment
+    Keyword arguments:
+    sender -- user's id
+    attach_type -- the type of the attachment
+    payload -- a message or a json with data
+    '''
+    return {
+        "recipient": {
+            "id": sender
+        },
+        "message": {
+            "attachment": {
+                "type": attach_type,
+                "payload": payload
+            }
+        }
+    }
 
 
 def send_text(sender, text):
-	return {
-		"recipient": {
-			"id": sender
-		},
-		"message": {
-			"text": text
-		} 
-	}
+    '''
+    Returns a json with the user's id and a text passed
+	Keyword arguments:
+	sender -- user's id
+	text -- message content
+	'''
+    return {
+        "recipient": {
+            "id": sender
+        },
+        "message": {
+            "text": text
+        }
+    }
 
 
-def send_weather_info(sender, **kwargs):
-	lat = kwargs.pop('lat', None)
-	lon = kwargs.pop('lon', None)
+def send_weather_info(sender, lat, lon):
+    '''
+	Sends the information about the shared weather
+	Keyword arguments:
+	sender -- user's id
+	lat -- latitude
+	lon -- longitude
+    '''
 
-	if lat and lon:
-		query = 'lat={}&lon={}'.format(lat, lon)
+    if lat and lon:
+        query = 'lat={}&lon={}'.format(lat, lon)
+        url = 'http://api.openweathermap.org/data/2.5/weather? \
+	           {}&appid={}&units={}&lang={}'.format(query, API_KEY, 'metric', 'en')
 
-	url = 'http://api.openweathermap.org/data/2.5/weather?' \
-	      '{}&appid={}&units={}&lang={}'.format(query, 
-	      								        api_key, 
-	      								        'metric', 
-	      								        'en')
+    data = requests.get(url)
+    response = data.json()
+    print(response)
 
-	r = requests.get(url)
-	response = r.json()
+    if 'cod' in response:
+        if response['cod'] != 200:
+            return 'error'
 
-	print (response)
+    name = response['name']
+    weather = response['main']
 
-	if 'cod' in response:
-		if response['cod'] != 200:
-			return 'error'
+    elements = [{
+        'title':  name,
+        'subtitle': 'Temperature: {} degrees'.format(str(weather['temp']).replace('.', ',')),
+        'image_url': 'https://cdn-images-1.medium.com/max/800/1*LkbHjhacSRDNDzupX7pgEQ.jpeg'
+    }]
 
-	name = response['name']
-	weather = response['main']
-	wind = response['wind']
+    for info in response['weather']:
+        description = info['description'].capitalize()
+        icon = info['icon']
+        weather_data = 'Pressure: {}\n \
+					    Humidity: {}\n \
+					    Max: {}\n \
+					    Min: {}'.format(weather['pressure'], weather['humidity'],
+                         weather['temp_max'], weather['temp_min'])
 
-	elements = [{
-		'title':  name,
-		'subtitle': 'Temperature: {} degrees'.format(str(weather['temp']).replace('.', ',')),
-		'image_url': 'https://cdn-images-1.medium.com/max/800/1*LkbHjhacSRDNDzupX7pgEQ.jpeg'
-	}]
+        if 'visibility' in response:
+            weather_data = '{}\n Visibility: {}'.format(weather_data, response['visibility'])
 
-	for info in response['weather']:
-		description = info['description'].capitalize()
-		icon = info['icon']
+        elements.append({
+            'title': description,
+            'subtitle': weather_data,
+            'image_url': 'http://openweathermap.org/img/w/{}.png'.format(icon)
+        })
 
-		weather_data = 'Pressure: {}\n' \
-					   'Humidity: {}\n' \
-					   'Max: {}\n' \
-					   'Min: {}'.format(weather['pressure'], weather['humidity'], 
-								   		weather['temp_max'], weather['temp_min'])
+    payload = send_attachment(sender, 'template', {"template_type": "list",
+                                                   "top_element_style": "large",
+                                                   "elements": elements,})
 
-		if 'visibility' in response:
-			weather_data = '{}\n Visibility: {}'.format(weather_data, response['visibility'])
+    send_message(payload)
+    return None
 
-		elements.append({
-			'title': description,
-			'subtitle': weather_data,
-			'image_url': 'http://openweathermap.org/img/w/{}.png'.format(icon)
-		})
-
-	payload = send_attachment(sender,
-                              'template',
-                              {
-                              	"template_type": "list",
-                                "top_element_style": "large",
-                                "elements": elements,
-                                #"buttons": [
-                                #	{
-                                #        "title": "Fazer nova pesquisa",
-                                #        "type": "postback",
-                                #        "payload": "do_it_again"
-                                #    }
-                                #]
-                              })
-
-	send_message(payload)
-	return None
 
 @app.route('/', methods=['GET', 'POST'])
 def webhook():
-	if request.method == 'POST':
-		try:
-			data = json.loads(request.data.decode())
-			sender = data['entry'][0]['messaging'][0]['sender']['id']
-			
-			print(data)
+    '''
+    Deals with all the interaction between the user and the bot
+    '''
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.data.decode())
+            sender = data['entry'][0]['messaging'][0]['sender']['id']
 
-			if 'message' in data['entry'][0]['messaging'][0]:
-				message = data['entry'][0]['messaging'][0]['message']
+            print(data)
 
-			if 'attachments' in message:
-				if 'payload' in message['attachments'][0]:
-					if 'coordinates' in message['attachments'][0]['payload']:
-						location = message['attachments'][0]['payload']['coordinates']
-						lat = location['lat']
-						lon = location['long']
-							
-						#send_weather_info(sender, lat=lat, lon=lon)
-						send_weather_info(sender, lat=lat, lon=lon)
-						if _return == 'error':
-							message = send_text(sender, get_message('error'))
-							send_message(message)
+            if 'message' in data['entry'][0]['messaging'][0]:
+                message = data['entry'][0]['messaging'][0]['message']
 
-							payload = location_quick_reply(sender)
-							send_message(payload)
+            if 'attachments' in message:
+                if 'payload' in message['attachments'][0]:
+                    if 'coordinates' in message['attachments'][0]['payload']:
+                        location = message['attachments'][0]['payload']['coordinates']
+                        lat = location['lat']
+                        lon = location['long']
 
-						'''
-						url = 'http://api.openweathermap.org/data/2.5/weather?' \
-						'lat={}&lon={}&appid={}&units={}&lang={}'.format(latitude, longitude, api_key, 'metric', 'en')
-						r = requests.get(url) 
-						description = r.json()['weather'][0]['description'].title()
-						icon = r.json()['weather'][0]['icon']
-						weather = r.json()['main']
-							text_res = '{}\n' \
-								   'Temperature: {}\n' \
-								   'Pressure: {}\n' \
-								   'Humidity: {}\n' \
-								   'Max: {}\n' \
-								   'Min: {}'.format(description, weather['temp'], weather['pressure'], weather['humidity'], 
-								   	weather['temp_max'], weather['temp_min'])
+                        send_weather_info(sender, lat=lat, lon=lon)
+                        if _return == 'error':
+                            message = send_text(sender, get_message('error'))
+                            send_message(message)
 
-						payload = {'recipient': {'id': sender}, 'message': {'text': text_res}}
-							
-						print(payload)
-							
-						send_message(payload)
-						'''
+                            payload = location_quick_reply(sender)
+                            send_message(payload)
 
-	 		else:
-				payload = location_quick_reply(sender)
-				
-				print(payload)
-				
-				send_message(payload)
+            else:
+                payload = location_quick_reply(sender)
+                print(payload)
+                send_message(payload)
 
-		except Exception as e:
-			print(traceback.format_exc())
-	
-	elif request.method == 'GET':
-		print request.args.get('hub.verify_token')
-		print os.environ.get('FB_VERIFY_TOKEN')
+        except Exception:
+            print(traceback.format_exc())
 
-		if request.args.get('hub.verify_token') == os.environ.get('FB_VERIFY_TOKEN'):
-				return request.args.get('hub.challenge')		
-		return "Wrong Verify Token"
-	
-	return "Nothing"
+    elif request.method == 'GET':
+        print(request.args.get('hub.verify_token'))
+        print(os.environ.get('FB_VERIFY_TOKEN'))
+
+        if request.args.get('hub.verify_token') == os.environ.get('FB_VERIFY_TOKEN'):
+            return request.args.get('hub.challenge')
+        return "Wrong Verify Token"
+
+    return "Nothing"
 
 
 if __name__ == '__main__':
-	app.run(debug=True)
+    app.run(debug=True)

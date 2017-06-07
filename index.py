@@ -31,8 +31,8 @@ def location_quick_reply(sender):
             'id': sender
         },
         'message': {
-            'text': "Can you share your location? I'll give you \
-                     some details about the weather. :D"
+            'text': 'Can you share your location? I will give you ' \
+                     'some details about the weather. :D'
         }
     }
 
@@ -43,8 +43,8 @@ def send_message(payload):
 	Keyword argument
 	payload -- a message or a json with data
 	'''
-    requests.post('https://graph.facebook.com/v2.6/me/messages/? \
-	               access_token=' + TOKEN, json=payload)
+    requests.post('https://graph.facebook.com/v2.6/me/messages/?' \
+	               'access_token=' + TOKEN, json=payload)
 
 
 def send_attachment(sender, attach_type, payload):
@@ -96,8 +96,8 @@ def send_weather_info(sender, lat, lon):
 
     if lat and lon:
         query = 'lat={}&lon={}'.format(lat, lon)
-        url = 'http://api.openweathermap.org/data/2.5/weather? \
-	           {}&appid={}&units={}&lang={}'.format(query, API_KEY, 'metric', 'en')
+        url = 'http://api.openweathermap.org/data/2.5/weather?' \
+	           '{}&appid={}&units={}&lang={}'.format(query, API_KEY, 'metric', 'en')
 
     data = requests.get(url)
     response = data.json()
@@ -119,11 +119,11 @@ def send_weather_info(sender, lat, lon):
     for info in response['weather']:
         description = info['description'].capitalize()
         icon = info['icon']
-        weather_data = 'Pressure: {}\n \
-					    Humidity: {}\n \
-					    Max: {}\n \
-					    Min: {}'.format(weather['pressure'], weather['humidity'],
-                         weather['temp_max'], weather['temp_min'])
+        weather_data = 'Pressure: {}\n' \
+					    'Humidity: {}\n' \
+					    'Max: {}\n' \
+					    'Min: {}'.format(weather['pressure'], weather['humidity'],
+                          weather['temp_max'], weather['temp_min'])
 
         if 'visibility' in response:
             weather_data = '{}\n Visibility: {}'.format(weather_data, response['visibility'])
@@ -165,7 +165,7 @@ def webhook():
                         lon = location['long']
 
                         send_weather_info(sender, lat=lat, lon=lon)
-                        if _return == 'error':
+                        if _return_ == 'error':
                             message = send_text(sender, get_message('error'))
                             send_message(message)
 
